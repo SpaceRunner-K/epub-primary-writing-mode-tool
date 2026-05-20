@@ -188,6 +188,21 @@
     progress{width:100%;height:12px;accent-color:var(--color-primary)}
     .progress-meta{display:flex;justify-content:space-between;gap:var(--space-3);
       font-size:var(--text-xs);color:var(--color-text-muted)}
+    /* ── batch list ── */
+    .batch-list{display:grid;gap:var(--space-2);margin-top:var(--space-2)}
+    .batch-item{display:flex;align-items:center;gap:var(--space-3);
+      padding:var(--space-2) var(--space-4);
+      background:var(--color-surface-2);border-radius:var(--radius-lg);
+      border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);
+      font-size:var(--text-xs)}
+    .batch-item-name{flex:1;word-break:break-all}
+    .batch-item-status{flex-shrink:0;min-width:5rem;text-align:right;font-weight:700}
+    .batch-item[data-state="pending"] .batch-item-status{color:var(--color-text-faint)}
+    .batch-item[data-state="ok"] .batch-item-status{color:var(--color-success)}
+    .batch-item[data-state="skip"] .batch-item-status{color:var(--color-text-muted)}
+    .batch-item[data-state="error"] .batch-item-status{color:var(--color-error)}
+    .batch-item[data-state="running"]{background:var(--color-primary-highlight)}
+    .batch-item[data-state="running"] .batch-item-status{color:var(--color-primary)}
     /* ── misc ── */
     code.inline{padding:.1rem .38rem;border-radius:.35rem;
       background:var(--color-surface-offset);font-size:.88em}
@@ -291,7 +306,7 @@
         </div>
         <div class="brand-text">
           <strong>Kindle 縦書き対策 EPUB Tool</strong>
-          <span>primary-writing-mode patcher v0.3</span>
+          <span>primary-writing-mode patcher v0.4</span>
         </div>
       </div>
       <div class="header-actions">
@@ -372,18 +387,14 @@
       <section class="panel stack">
         <div class="panel-title">EPUB を選んで処理する</div>
         <div class="field">
-          <label for="epubFile">EPUB ファイル</label>
-          <input id="epubFile" type="file" accept=".epub,application/epub+zip" />
+          <label for="epubFile">EPUB ファイル（複数選択可）</label>
+          <input id="epubFile" type="file" accept=".epub,application/epub+zip" multiple />
           <div class="minor" id="fileInfo">未選択</div>
         </div>
-        <div class="field">
-          <label for="modeValue">primary-writing-mode の値</label>
-          <select id="modeValue">
-            <option value="horizontal-rl" selected>horizontal-rl（日本語縦書き・推奨）</option>
-            <option value="horizontal-lr">horizontal-lr</option>
-            <option value="vertical-rl">vertical-rl</option>
-            <option value="vertical-lr">vertical-lr</option>
-          </select>
+        <!-- 追加値は上級者モードに移動。標準は horizontal-rl 固定で即処理 -->
+        <div class="minor" id="modeHint">
+          適用する値: <code class="inline">horizontal-rl</code>（日本語縦書き・推奨）
+          ／ 別の値を使う場合は上級者モードを開いてください。
         </div>
         <div class="actions">
           <button class="btn btn-secondary" id="checkButton" type="button">保存前チェック</button>
@@ -399,6 +410,11 @@
             <span id="progressLabel">待機中</span>
             <span id="progressPercent">0%</span>
           </div>
+        </div>
+        <!-- バッチリスト（複数選択時に表示） -->
+        <div id="batchListWrap" style="display:none">
+          <div class="panel-title" style="margin-top:var(--space-2)">処理キュー</div>
+          <div class="batch-list" id="batchList"></div>
         </div>
       </section>
 
@@ -431,6 +447,18 @@
             OPF の直接編集・複数 rootfile 選択・manifest/spine 検証が可能です。
             XML 構文エラーは保存をブロックします。変更内容は保存前に確認ダイアログが表示されます。
           </p>
+        </div>
+
+        <!-- primary-writing-mode 値選択（上級者モード内） -->
+        <div class="field" style="max-width:26rem">
+          <label for="modeValue">primary-writing-mode の値</label>
+          <select id="modeValue">
+            <option value="horizontal-rl" selected>horizontal-rl（日本語縦書き・推奨）</option>
+            <option value="horizontal-lr">horizontal-lr</option>
+            <option value="vertical-rl">vertical-rl</option>
+            <option value="vertical-lr">vertical-lr</option>
+          </select>
+          <div class="minor">標準モードのボタンおよび「writing-mode を自動挿入」ボタンに反映されます。</div>
         </div>
 
         <div class="adv-grid">
@@ -524,6 +552,8 @@
   const progressBar=document.getElementById('progressBar');
   const progressLabel=document.getElementById('progressLabel');
   const progressPercent=document.getElementById('progressPercent');
+  const batchListWrap=document.getElementById('batchListWrap');
+  const batchListEl=document.getElementById('batchList');
   // adv
   const advToggleBtn=document.getElementById('advToggleBtn');
   const advToggleLabel=document.getElementById('advToggleLabel');
@@ -675,6 +705,14 @@
     return {method:'download',filename:fname};
   }
 
+  // ── get ppd from OPF doc ─────────────────────────────────────────
+  // page-progression-direction は <package> 要素ではなく <spine> 要素の属性
+  function getSpinePpd(opfDoc){
+    const spineEl=byLocal(opfDoc,'spine');
+    if(!spineEl)return null;
+    return spineEl.getAttribute('page-progression-direction');
+  }
+
   // ── preflight ────────────────────────────────────────────────────
   function buildPreview(opfPath,result,xmlText){
     const lines=xmlText.split(/\r?\n/).filter(l=>
@@ -692,13 +730,18 @@
     const metas=allByLocal(metadata,'meta');
     const current=metas.find(el=>el.getAttribute('name')==='primary-writing-mode');
     const cv=current?current.getAttribute('content')||'(empty)':null;
-    const ppd=opfDoc.documentElement.getAttribute('page-progression-direction')||'(未設定)';
+
+    // ── page-progression-direction は <spine> 要素から取得 ──
+    const ppd=getSpinePpd(opfDoc);
+    const ppdDisplay=ppd??'(未設定)';
+    const ppdOk=ppd==='rtl';
+
     const items=[
       {state:'ok',label:'OPF 検出',detail:opfPath},
       {state:info.mimetype==='application/epub+zip'?'ok':'warn',
         label:'mimetype',detail:info.mimetype||'mimetype が見つかりません'},
-      {state:ppd==='rtl'?'ok':'warn',label:'page-progression-direction',
-        detail:`${ppd}${ppd==='rtl'?' — 縦書き RTL として定義済み':' — 縦書き EPUB では通常 rtl のはず'}`},
+      {state:ppdOk?'ok':'warn',label:'spine / page-progression-direction',
+        detail:`${ppdDisplay}${ppdOk?' — 縦書き RTL として定義済み':' — 縦書き EPUB では通常 rtl のはず'}`},
       {state:current?cv===desiredValue?'ok':'warn':'warn',
         label:'既存 primary-writing-mode',
         detail:current?`現在値: ${cv}`:'未設定（追加されます）'},
@@ -731,38 +774,70 @@
     }
   }
 
+  // ── batch list helpers ────────────────────────────────────────────
+  function buildBatchList(files){
+    batchListEl.innerHTML='';
+    const items=[];
+    for(const f of files){
+      const div=document.createElement('div');
+      div.className='batch-item';div.dataset.state='pending';
+      div.innerHTML=`<span class="batch-item-name">${f.name}</span>
+        <span class="batch-item-status">待機中</span>`;
+      batchListEl.appendChild(div);
+      items.push(div);
+    }
+    batchListWrap.style.display='block';
+    return items;
+  }
+  function setBatchState(el,state,label){
+    el.dataset.state=state;
+    el.querySelector('.batch-item-status').textContent=label;
+  }
+
   // ── standard buttons ─────────────────────────────────────────────
   fileInput.addEventListener('change',()=>{
-    const f=fileInput.files?.[0];
-    if(!f){
+    const files=fileInput.files;
+    if(!files||!files.length){
       fileInfo.textContent='未選択';renderChecks([]);preview.value='';
       resetProgress();setStatus(statusBox,'idle','待機中です。EPUB を選んでください。');
       currentZip=null;currentRootfiles=[];selectedRootfilePath=null;originalOpfText=null;
+      batchListWrap.style.display='none';
       resetAdvPanel();return;
     }
-    fileInfo.textContent=`${f.name} / ${fmtBytes(f.size)}`;
+    if(files.length===1){
+      fileInfo.textContent=`${files[0].name} / ${fmtBytes(files[0].size)}`;
+      batchListWrap.style.display='none';
+    } else {
+      fileInfo.textContent=`${files.length} ファイル選択中`;
+      buildBatchList(files);
+    }
     renderChecks([]);preview.value='';resetProgress();
     setStatus(statusBox,'idle','ファイルを読み込みました。保存前チェックを実行できます。');
-    if(advMode)loadAdvData(f);
+    if(advMode&&files.length===1)loadAdvData(files[0]);
   });
 
   checkButton.addEventListener('click',async()=>{
-    const f=fileInput.files?.[0];
-    if(!f){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
+    const files=fileInput.files;
+    if(!files||!files.length){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
+    // チェックは先頭ファイルのみ表示（複数時は1件目の詳細を示す）
+    const f=files[0];
     try{
       setProgress(5,'保存前チェック');
-      const {items,result,patched,opfPath}=await preflight(f,modeValue.value,selectedRootfilePath);
+      const {items,result,patched,opfPath}=await preflight(f,modeValue.value,files.length===1?selectedRootfilePath:null);
       renderChecks(items);preview.value=buildPreview(opfPath,result,patched);
-      setProgress(100,'完了');setStatus(statusBox,'success','保存前チェックが完了しました。');
+      if(files.length>1)setStatus(statusBox,'warn',`チェック結果は先頭ファイル（${f.name}）のものです。`);
+      else setStatus(statusBox,'success','保存前チェックが完了しました。');
+      setProgress(100,'完了');
     }catch(e){console.error(e);setStatus(statusBox,'error',e.message);setProgress(0,'エラー');}
   });
 
   inspectButton.addEventListener('click',async()=>{
-    const f=fileInput.files?.[0];
-    if(!f){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
+    const files=fileInput.files;
+    if(!files||!files.length){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
+    const f=files[0];
     try{
       setProgress(10,'解析中');
-      const {info,result,patched,opfPath}=await preflight(f,modeValue.value,selectedRootfilePath);
+      const {result,patched,opfPath}=await preflight(f,modeValue.value,files.length===1?selectedRootfilePath:null);
       preview.value=buildPreview(opfPath,result,patched||'');
       setProgress(100,'完了');
       setStatus(statusBox,'success',`確認完了: ${result.action} される予定です。`);
@@ -770,37 +845,71 @@
   });
 
   patchButton.addEventListener('click',async()=>{
-    const f=fileInput.files?.[0];
-    if(!f){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
-    // show confirm dialog
-    try{
-      setProgress(5,'保存前チェック');
-      const {info,items,result,patched,opfPath}=await preflight(f,modeValue.value,selectedRootfilePath);
-      renderChecks(items);preview.value=buildPreview(opfPath,result,patched);
-      if(result.action==='unchanged'){
-        setStatus(statusBox,'warn','already-patched: すでに同じ値が設定されています。');
-        setProgress(100,'変更なし');return;
-      }
-      // open dialog
-      openConfirmDialog(result,opfPath,async()=>{
+    const files=fileInput.files;
+    if(!files||!files.length){setStatus(statusBox,'warn','先に EPUB を選択してください。');return;}
+
+    if(files.length===1){
+      // 単一ファイル: 従来のダイアログ確認フロー
+      const f=files[0];
+      try{
+        setProgress(5,'保存前チェック');
+        const {info,items,result,patched,opfPath}=await preflight(f,modeValue.value,selectedRootfilePath);
+        renderChecks(items);preview.value=buildPreview(opfPath,result,patched);
+        if(result.action==='unchanged'){
+          setStatus(statusBox,'warn','already-patched: すでに同じ値が設定されています。');
+          setProgress(100,'変更なし');return;
+        }
+        openConfirmDialog(result,opfPath,async()=>{
+          try{
+            patchButton.disabled=inspectButton.disabled=checkButton.disabled=true;
+            setStatus(statusBox,'idle','EPUB を再構築しています…');
+            const patches=new Map([[opfPath,patched]]);
+            const blob=await rebuild(info.zip,patches);
+            setProgress(100,'保存中');
+            const saved=await saveBlob(blob,f.name);
+            const label=result.action==='added'?'追加':result.action==='updated'?'更新':'確認';
+            setStatus(statusBox,'success',
+              `${label}完了（${saved.method==='picker'?'直接保存':'ダウンロード'}）: ${saved.filename}`);
+            setProgress(100,'完了');
+          }catch(e){
+            console.error(e);
+            setStatus(statusBox,e.message==='保存がキャンセルされました'?'warn':'error',e.message);
+            setProgress(0,e.message==='保存がキャンセルされました'?'キャンセル':'エラー');
+          }finally{patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;}
+        });
+      }catch(e){console.error(e);setStatus(statusBox,'error',e.message);setProgress(0,'エラー');}
+    } else {
+      // 複数ファイル: バッチ処理（確認ダイアログなしで順次保存）
+      const fileArr=Array.from(files);
+      const batchItems=buildBatchList(fileArr);
+      patchButton.disabled=inspectButton.disabled=checkButton.disabled=true;
+      let ok=0,skip=0,fail=0;
+      for(let i=0;i<fileArr.length;i++){
+        const f=fileArr[i];
+        setBatchState(batchItems[i],'running','処理中…');
+        setProgress(Math.round(i/fileArr.length*100),`${i+1}/${fileArr.length}: ${f.name}`);
         try{
-          patchButton.disabled=inspectButton.disabled=checkButton.disabled=true;
-          setStatus(statusBox,'idle','EPUB を再構築しています…');
+          const {info,result,patched,opfPath}=await preflight(f,modeValue.value,null);
+          if(result.action==='unchanged'){
+            setBatchState(batchItems[i],'skip','スキップ（変更なし）');
+            skip++;continue;
+          }
           const patches=new Map([[opfPath,patched]]);
           const blob=await rebuild(info.zip,patches);
-          setProgress(100,'保存中');
-          const saved=await saveBlob(blob,f.name);
-          const label=result.action==='added'?'追加':result.action==='updated'?'更新':'確認';
-          setStatus(statusBox,'success',
-            `${label}完了（${saved.method==='picker'?'直接保存':'ダウンロード'}）: ${saved.filename}`);
-          setProgress(100,'完了');
+          await saveBlob(blob,f.name);
+          setBatchState(batchItems[i],'ok','完了');
+          ok++;
         }catch(e){
           console.error(e);
-          setStatus(statusBox,e.message==='保存がキャンセルされました'?'warn':'error',e.message);
-          setProgress(0,e.message==='保存がキャンセルされました'?'キャンセル':'エラー');
-        }finally{patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;}
-      });
-    }catch(e){console.error(e);setStatus(statusBox,'error',e.message);setProgress(0,'エラー');}
+          setBatchState(batchItems[i],'error',e.message.slice(0,40));
+          fail++;
+        }
+      }
+      setProgress(100,'バッチ完了');
+      const msg=`バッチ完了 — 成功: ${ok}件 / スキップ: ${skip}件 / エラー: ${fail}件`;
+      setStatus(statusBox,fail>0?'warn':'success',msg);
+      patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;
+    }
   });
 
   // ── confirm dialog ────────────────────────────────────────────────
@@ -841,8 +950,8 @@
     advToggleLabel.textContent=advMode?'上級者モードを閉じる':'上級者モード';
     if(advMode){
       advancedSection.scrollIntoView({behavior:'smooth',block:'start'});
-      const f=fileInput.files?.[0];
-      if(f)loadAdvData(f);
+      const files=fileInput.files;
+      if(files&&files.length===1)loadAdvData(files[0]);
     }
   });
 
@@ -909,8 +1018,7 @@
     advEditorStats.innerHTML=`
       <span class="chip">${lines} 行</span>
       <span class="chip">${fmtBytes(bytes)}</span>
-      <span class="chip" style="background:${vld.ok?'var(--color-success-highlight)':'var(--color-error-highlight)'};\
-color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
+      <span class="chip" style="background:${vld.ok?'var(--color-success-highlight)':'var(--color-error-highlight)'};color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
         ${vld.ok?'XML OK':'XML エラー'}
       </span>`;
   }
@@ -957,7 +1065,9 @@ color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
   // ── spine viz ─────────────────────────────────────────────────────
   function renderSpine(opfDoc){
     const spineEl=byLocal(opfDoc,'spine');
-    const ppd=opfDoc.documentElement.getAttribute('page-progression-direction')||'(未設定)';
+    // ── 修正: ppd は <spine> 要素の属性から取得 ──
+    const ppd=spineEl?spineEl.getAttribute('page-progression-direction'):null;
+    const ppdDisplay=ppd??'(未設定)';
     if(!spineEl){spineRow.innerHTML='<span class="minor">spine が見つかりません</span>';return;}
     const itemrefs=allByLocal(spineEl,'itemref');
     if(!itemrefs.length){spineRow.innerHTML='<span class="minor">spine アイテムなし</span>';return;}
@@ -967,7 +1077,7 @@ color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
       const cls='spine-item'+(ppd==='rtl'?' rtl-spine':'');
       return `<span class="${cls}" title="linear: ${linear??'(未設定)'}">${idref}</span>`;
     }).join('');
-    spineNote.textContent=`page-progression-direction="${ppd}" / ${itemrefs.length} アイテム`;
+    spineNote.textContent=`page-progression-direction="${ppdDisplay}" / ${itemrefs.length} アイテム`;
   }
 
   // ── adv: reload ───────────────────────────────────────────────────
@@ -999,10 +1109,11 @@ color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
 
   // ── adv: save ─────────────────────────────────────────────────────
   advSaveBtn.addEventListener('click',async()=>{
-    const f=fileInput.files?.[0];
-    if(!f||!currentZip||!selectedRootfilePath){
+    const files=fileInput.files;
+    if(!files||!files.length||!currentZip||!selectedRootfilePath){
       setStatus(advStatus,'warn','先に EPUB を選択してください。');return;
     }
+    const f=files[0];
     const editedText=advEditor.value;
     const vld=validateXml(editedText);
     if(!vld.ok){
