@@ -3,105 +3,98 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>epub-primary-writing-mode-tool</title>
+  <title>Kindle 縦書き対策 EPUB Tool</title>
+  <meta name="description" content="Kindle の縦書き表示不具合を回避するため、EPUB の content.opf に primary-writing-mode を追加・更新するブラウザ完結ツール" />
   <link rel="preconnect" href="https://api.fontshare.com" />
   <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=zodiak@400,700&display=swap" rel="stylesheet" />
   <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
-    :root, [data-theme="light"] {
-      --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-      --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
-      --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
-      --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
-      --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
-      --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem; --space-6: 1.5rem; --space-8: 2rem; --space-12: 3rem; --space-16: 4rem;
-      --color-bg: #f7f6f2; --color-surface: #f9f8f5; --color-surface-2: #fbfbf9; --color-surface-offset: #f3f0ec; --color-border: #d4d1ca;
-      --color-text: #28251d; --color-text-muted: #7a7974; --color-text-faint: #bab9b4; --color-text-inverse: #f9f8f4;
-      --color-primary: #01696f; --color-primary-hover: #0c4e54; --color-primary-highlight: #cedcd8;
-      --color-success: #437a22; --color-success-highlight: #d4dfcc; --color-warning: #964219; --color-warning-highlight: #ddcfc6; --color-error: #a12c7b; --color-error-highlight: #e0ced7;
-      --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem; --radius-xl: 1rem; --radius-full: 9999px;
-      --shadow-sm: 0 1px 2px rgb(40 37 29 / 0.06); --shadow-md: 0 8px 24px rgb(40 37 29 / 0.08);
-      --font-body: 'Satoshi', 'Inter', sans-serif; --font-display: 'Zodiak', Georgia, serif;
-      --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
-      --content-default: 960px;
-    }
-    [data-theme="dark"] {
-      --color-bg: #171614; --color-surface: #1c1b19; --color-surface-2: #201f1d; --color-surface-offset: #1d1c1a; --color-border: #393836;
-      --color-text: #cdccca; --color-text-muted: #979694; --color-text-faint: #6b6a68; --color-text-inverse: #2b2a28;
-      --color-primary: #4f98a3; --color-primary-hover: #227f8b; --color-primary-highlight: #313b3b;
-      --color-success: #6daa45; --color-success-highlight: #3a4435; --color-warning: #bb653b; --color-warning-highlight: #564942; --color-error: #d163a7; --color-error-highlight: #4c3d46;
-      --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.22); --shadow-md: 0 10px 30px rgb(0 0 0 / 0.35);
-    }
+    :root,[data-theme="light"]{--text-xs:clamp(0.75rem,0.7rem + 0.25vw,0.875rem);--text-sm:clamp(0.875rem,0.8rem + 0.35vw,1rem);--text-base:clamp(1rem,0.95rem + 0.25vw,1.125rem);--text-lg:clamp(1.125rem,1rem + 0.75vw,1.5rem);--text-xl:clamp(1.5rem,1.2rem + 1.25vw,2.25rem);--space-1:0.25rem;--space-2:0.5rem;--space-3:0.75rem;--space-4:1rem;--space-5:1.25rem;--space-6:1.5rem;--space-8:2rem;--space-10:2.5rem;--space-12:3rem;--space-16:4rem;--color-bg:#f7f6f2;--color-surface:#f9f8f5;--color-surface-2:#fbfbf9;--color-surface-offset:#f3f0ec;--color-border:#d4d1ca;--color-text:#28251d;--color-text-muted:#7a7974;--color-text-faint:#bab9b4;--color-text-inverse:#f9f8f4;--color-primary:#01696f;--color-primary-hover:#0c4e54;--color-primary-highlight:#cedcd8;--color-success:#437a22;--color-success-highlight:#d4dfcc;--color-warning:#964219;--color-warning-highlight:#ddcfc6;--color-error:#a12c7b;--color-error-highlight:#e0ced7;--radius-sm:0.375rem;--radius-md:0.5rem;--radius-lg:0.75rem;--radius-xl:1rem;--radius-full:9999px;--shadow-sm:0 1px 2px rgb(40 37 29 / 0.06);--shadow-md:0 8px 24px rgb(40 37 29 / 0.08);--font-body:'Satoshi','Inter',sans-serif;--font-display:'Zodiak',Georgia,serif;--transition-interactive:180ms cubic-bezier(0.16,1,0.3,1);--content-default:1100px}
+    [data-theme="dark"]{--color-bg:#171614;--color-surface:#1c1b19;--color-surface-2:#201f1d;--color-surface-offset:#1d1c1a;--color-border:#393836;--color-text:#cdccca;--color-text-muted:#979694;--color-text-faint:#6b6a68;--color-text-inverse:#2b2a28;--color-primary:#4f98a3;--color-primary-hover:#227f8b;--color-primary-highlight:#313b3b;--color-success:#6daa45;--color-success-highlight:#3a4435;--color-warning:#bb653b;--color-warning-highlight:#564942;--color-error:#d163a7;--color-error-highlight:#4c3d46;--shadow-sm:0 1px 2px rgb(0 0 0 / 0.22);--shadow-md:0 10px 30px rgb(0 0 0 / 0.35)}
     *,:before,:after{box-sizing:border-box;margin:0;padding:0}
     html{-webkit-text-size-adjust:none;text-size-adjust:none;scroll-behavior:smooth}
     body{min-height:100dvh;font-family:var(--font-body);font-size:var(--text-base);line-height:1.6;background:var(--color-bg);color:var(--color-text)}
     img,svg{display:block;max-width:100%;height:auto}
-    button,input,select,textarea{font:inherit;color:inherit}
-    a,button,input,select{transition:background var(--transition-interactive),border-color var(--transition-interactive),color var(--transition-interactive),box-shadow var(--transition-interactive)}
+    button,input,select,textarea,progress{font:inherit;color:inherit}
+    a,button,input,select{transition:background var(--transition-interactive),border-color var(--transition-interactive),color var(--transition-interactive),box-shadow var(--transition-interactive),opacity var(--transition-interactive)}
     :focus-visible{outline:2px solid var(--color-primary);outline-offset:3px;border-radius:var(--radius-sm)}
-    @media (prefers-reduced-motion: reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
-    .skip-link{position:absolute;left:var(--space-4);top:-40px;background:var(--color-primary);color:var(--color-text-inverse);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);text-decoration:none;z-index:20}
-    .skip-link:focus{top:var(--space-4)}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+    .skip-link{position:absolute;left:var(--space-4);top:-40px;background:var(--color-primary);color:var(--color-text-inverse);padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);text-decoration:none;z-index:20}.skip-link:focus{top:var(--space-4)}
     .container{width:min(calc(100% - 2rem),var(--content-default));margin-inline:auto}
-    .site-header{position:sticky;top:0;z-index:10;background:color-mix(in srgb, var(--color-bg) 88%, transparent);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb, var(--color-text) 12%, transparent)}
+    .site-header{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--color-bg) 88%,transparent);backdrop-filter:blur(14px);border-bottom:1px solid color-mix(in srgb,var(--color-text) 12%,transparent)}
     .site-header-inner{display:flex;align-items:center;justify-content:space-between;padding:var(--space-4) 0;gap:var(--space-4)}
     .brand{display:flex;align-items:center;gap:var(--space-3)}
-    .brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--color-primary-highlight),var(--color-surface-2));display:grid;place-items:center;border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent);box-shadow:var(--shadow-sm)}
-    .brand-mark svg{width:24px;height:24px;color:var(--color-primary)}
-    .brand-text strong{display:block;font-family:var(--font-display);font-size:var(--text-lg);line-height:1.05}
-    .brand-text span{display:block;font-size:var(--text-sm);color:var(--color-text-muted)}
-    .theme-toggle{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--radius-full);border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent);background:var(--color-surface);cursor:pointer}
+    .brand-mark{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--color-primary-highlight),var(--color-surface-2));display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--color-text) 10%,transparent);box-shadow:var(--shadow-sm)}
+    .brand-mark svg{width:22px;height:22px;color:var(--color-primary)}
+    .brand-text strong{display:block;font-family:var(--font-display);font-size:var(--text-base);line-height:1.05}
+    .brand-text span{display:block;font-size:var(--text-xs);color:var(--color-text-muted)}
+    .theme-toggle{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--radius-full);border:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);background:var(--color-surface);cursor:pointer}
     main{padding:clamp(var(--space-8),6vw,var(--space-16)) 0}
-    .hero{display:grid;gap:var(--space-8);align-items:start}
-    .hero-card,.panel{background:var(--color-surface);border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent);border-radius:var(--radius-xl);box-shadow:var(--shadow-sm)}
-    .hero-card{padding:clamp(var(--space-6),4vw,var(--space-12));position:relative;overflow:hidden}
-    .hero-card::after{content:"";position:absolute;inset:auto -10% -25% auto;width:240px;height:240px;background:radial-gradient(circle,var(--color-primary-highlight),transparent 70%);pointer-events:none}
-    .eyebrow{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-full);background:var(--color-primary-highlight);color:var(--color-primary);font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
-    h1{font-family:var(--font-display);font-size:var(--text-xl);line-height:1.05;max-width:14ch;margin-top:var(--space-4)}
-    .lead{margin-top:var(--space-4);max-width:62ch;color:var(--color-text-muted)}
-    .grid{display:grid;gap:var(--space-6);margin-top:var(--space-8)}
-    @media (min-width: 900px){.grid{grid-template-columns:1.25fr .95fr}.hero{grid-template-columns:1.2fr .8fr}}
+    .hero{display:grid;gap:var(--space-6);margin-bottom:var(--space-8)}
+    @media(min-width:860px){.hero{grid-template-columns:1.3fr 0.7fr;gap:var(--space-8);align-items:start}}
+    .hero-card,.panel{background:var(--color-surface);border:1px solid color-mix(in srgb,var(--color-text) 10%,transparent);border-radius:var(--radius-xl);box-shadow:var(--shadow-sm)}
+    .hero-card{padding:clamp(var(--space-6),4vw,var(--space-10));position:relative;overflow:hidden}
+    .hero-card::after{content:"";position:absolute;inset:auto -8% -20% auto;width:220px;height:220px;background:radial-gradient(circle,var(--color-primary-highlight),transparent 70%);pointer-events:none}
+    .eyebrow{display:inline-flex;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);border-radius:var(--radius-full);background:var(--color-warning-highlight);color:var(--color-warning);font-size:var(--text-xs);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+    h1{font-family:var(--font-display);font-size:var(--text-xl);line-height:1.1;margin-top:var(--space-4)}
+    .lead{margin-top:var(--space-3);max-width:58ch;color:var(--color-text-muted);font-size:var(--text-sm)}
+    .mechanism{margin-top:var(--space-5);padding:var(--space-4) var(--space-5);background:var(--color-surface-2);border-radius:var(--radius-lg);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent)}
+    .mechanism h2{font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-3);color:var(--color-text-muted)}
+    .mechanism ol{padding-left:var(--space-5);display:grid;gap:var(--space-2)}
+    .mechanism li{font-size:var(--text-sm);max-width:none}
+    .grid{display:grid;gap:var(--space-6)}
+    @media(min-width:860px){.grid{grid-template-columns:1.1fr 0.9fr}}
     .panel{padding:var(--space-6)}
     .stack{display:grid;gap:var(--space-4)}
     .field{display:grid;gap:var(--space-2)}
     label{font-size:var(--text-sm);font-weight:700}
-    input[type="file"],select,textarea{width:100%;padding:0.9rem 1rem;background:var(--color-surface-2);border:1px solid color-mix(in srgb, var(--color-text) 12%, transparent);border-radius:var(--radius-lg)}
-    textarea{min-height:12rem;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.95rem}
+    input[type="file"],select,textarea{width:100%;padding:.85rem 1rem;background:var(--color-surface-2);border:1px solid color-mix(in srgb,var(--color-text) 12%,transparent);border-radius:var(--radius-lg)}
+    textarea{min-height:13rem;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem}
     .actions{display:flex;flex-wrap:wrap;gap:var(--space-3)}
-    .btn{display:inline-flex;align-items:center;justify-content:center;min-width:11rem;min-height:44px;padding:0.85rem 1.1rem;border-radius:var(--radius-lg);border:1px solid transparent;font-weight:700;cursor:pointer}
+    .btn{display:inline-flex;align-items:center;justify-content:center;min-width:10rem;min-height:44px;padding:.8rem 1rem;border-radius:var(--radius-lg);border:1px solid transparent;font-weight:700;cursor:pointer;font-size:var(--text-sm)}
+    .btn[disabled]{opacity:.55;cursor:not-allowed}
     .btn-primary{background:var(--color-primary);color:var(--color-text-inverse)}
-    .btn-primary:hover{background:var(--color-primary-hover)}
-    .btn-secondary{background:var(--color-surface-2);border-color:color-mix(in srgb, var(--color-text) 12%, transparent)}
-    .btn-secondary:hover{background:var(--color-surface-offset)}
-    .meta-list{display:grid;gap:var(--space-3)}
-    .meta-item{padding:var(--space-4);background:var(--color-surface-2);border-radius:var(--radius-lg);border:1px solid color-mix(in srgb, var(--color-text) 10%, transparent)}
-    .meta-item strong{display:block;font-size:var(--text-sm)}
-    .meta-item span{display:block;color:var(--color-text-muted);font-size:var(--text-sm)}
-    .status{padding:var(--space-4);border-radius:var(--radius-lg);font-size:var(--text-sm);border:1px solid transparent}
-    .status[data-kind="idle"]{background:var(--color-surface-2);border-color:color-mix(in srgb, var(--color-text) 10%, transparent)}
-    .status[data-kind="success"]{background:var(--color-success-highlight);border-color:color-mix(in srgb, var(--color-success) 30%, transparent)}
-    .status[data-kind="warn"]{background:var(--color-warning-highlight);border-color:color-mix(in srgb, var(--color-warning) 30%, transparent)}
-    .status[data-kind="error"]{background:var(--color-error-highlight);border-color:color-mix(in srgb, var(--color-error) 30%, transparent)}
-    code.inline{padding:.12rem .42rem;border-radius:.4rem;background:var(--color-surface-offset);font-size:.92em}
-    .footer-note{margin-top:var(--space-8);color:var(--color-text-muted);font-size:var(--text-sm)}
+    .btn-primary:hover:not([disabled]){background:var(--color-primary-hover)}
+    .btn-secondary{background:var(--color-surface-2);border-color:color-mix(in srgb,var(--color-text) 12%,transparent)}
+    .btn-secondary:hover:not([disabled]){background:var(--color-surface-offset)}
+    .meta-list,.check-list{display:grid;gap:var(--space-2)}
+    .meta-item,.check-item{padding:var(--space-3) var(--space-4);background:var(--color-surface-2);border-radius:var(--radius-lg);border:1px solid color-mix(in srgb,var(--color-text) 10%,transparent)}
+    .meta-item strong,.check-item strong{display:block;font-size:var(--text-xs);font-weight:700;margin-bottom:2px}
+    .meta-item span,.check-item span{display:block;color:var(--color-text-muted);font-size:var(--text-xs)}
+    .check-item[data-state="ok"]{background:var(--color-success-highlight);border-color:color-mix(in srgb,var(--color-success) 30%,transparent)}
+    .check-item[data-state="warn"]{background:var(--color-warning-highlight);border-color:color-mix(in srgb,var(--color-warning) 30%,transparent)}
+    .check-item[data-state="error"]{background:var(--color-error-highlight);border-color:color-mix(in srgb,var(--color-error) 30%,transparent)}
+    .status{padding:var(--space-3) var(--space-4);border-radius:var(--radius-lg);font-size:var(--text-sm);border:1px solid transparent}
+    .status[data-kind="idle"]{background:var(--color-surface-2);border-color:color-mix(in srgb,var(--color-text) 10%,transparent)}
+    .status[data-kind="success"]{background:var(--color-success-highlight);border-color:color-mix(in srgb,var(--color-success) 30%,transparent)}
+    .status[data-kind="warn"]{background:var(--color-warning-highlight);border-color:color-mix(in srgb,var(--color-warning) 30%,transparent)}
+    .status[data-kind="error"]{background:var(--color-error-highlight);border-color:color-mix(in srgb,var(--color-error) 30%,transparent)}
+    code.inline{padding:.1rem .38rem;border-radius:.35rem;background:var(--color-surface-offset);font-size:.88em}
+    .progress-wrap{display:grid;gap:var(--space-2)}
+    progress{width:100%;height:12px;accent-color:var(--color-primary)}
+    .progress-meta{display:flex;justify-content:space-between;gap:var(--space-3);font-size:var(--text-xs);color:var(--color-text-muted)}
+    .minor{font-size:var(--text-xs);color:var(--color-text-muted)}
+    .panel-title{font-size:var(--text-sm);font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:var(--space-1)}
+    .footer-note{margin-top:var(--space-8);padding:var(--space-4) var(--space-5);background:var(--color-surface);border:1px solid color-mix(in srgb,var(--color-text) 8%,transparent);border-radius:var(--radius-lg);font-size:var(--text-sm);color:var(--color-text-muted)}
+    .sidebar-info{display:grid;gap:var(--space-3)}
   </style>
 </head>
 <body>
   <a class="skip-link" href="#main">本文へ移動</a>
   <header class="site-header">
     <div class="container site-header-inner">
-      <div class="brand" aria-label="EPUB Primary Writing Mode Tool">
+      <div class="brand" aria-label="Kindle 縦書き対策 EPUB Tool">
         <div class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M6 5.5h7.5a3.5 3.5 0 0 1 0 7H6z" />
-            <path d="M6 11v7.5" />
-            <path d="M6 18.5h11.5" />
-            <path d="M16.5 15l3 3.5-3 3.5" />
+            <path d="M6 5.5h7.5a3.5 3.5 0 0 1 0 7H6z"/>
+            <path d="M6 11v7.5"/>
+            <path d="M6 18.5h11.5"/>
+            <path d="M16.5 15l3 3.5-3 3.5"/>
           </svg>
         </div>
         <div class="brand-text">
-          <strong>EPUB meta patcher</strong>
-          <span>primary-writing-mode を追加 / 更新</span>
+          <strong>Kindle 縦書き対策 EPUB Tool</strong>
+          <span>primary-writing-mode patcher v0.2</span>
         </div>
       </div>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="テーマ切り替え"></button>
@@ -111,255 +104,230 @@
   <main id="main" class="container">
     <section class="hero">
       <article class="hero-card">
-        <div class="eyebrow">Static site / Browser only</div>
-        <h1>EPUB の <code class="inline">content.opf</code> をブラウザだけで編集</h1>
-        <p class="lead">ローカルの EPUB を読み込み、<code class="inline">metadata</code> セクションに <code class="inline">primary-writing-mode</code> を追加または更新して、修正済み EPUB を再保存します。GitHub Pages のような静的ホストでも動く構成です。</p>
+        <div class="eyebrow">Kindle バグ回避ツール</div>
+        <h1>縦書き EPUB の<br>Death Margin を直す</h1>
+        <p class="lead">
+          2026 年 4 月の Kindle ファームウェアアップデート以降、Send to Kindle 経由の縦書き EPUB で上下に不自然な余白（Death Margin）が発生する不具合があります。<code class="inline">content.opf</code> に <code class="inline">primary-writing-mode</code> を明示することで回避できる場合があります。
+        </p>
+        <div class="mechanism">
+          <h2>推定されるバグの原因と回避の仕組み</h2>
+          <ol>
+            <li>日本語縦書き EPUB は仕様上 <code class="inline">page-progression-direction="rtl"</code> を持つ。</li>
+            <li>更新後の Kindle レンダリングエンジンがこの RTL をアラビア語・ヘブライ語などの<strong>横書き RTL 言語</strong>と誤認識した可能性がある。</li>
+            <li>横書き RTL のマージン・余白規則が縦書きに適用され、上下の余白が崩れる。</li>
+            <li><code class="inline">primary-writing-mode="horizontal-rl"</code> を付与することで、エンジンが<strong>縦書き用の正しいレイアウト規則</strong>を選択するよう誘導できる。</li>
+          </ol>
+        </div>
       </article>
-
-      <aside class="panel stack" aria-label="仕様メモ">
+      <aside class="panel sidebar-info" aria-label="発症条件と対応">
+        <div class="panel-title">発症条件</div>
         <div class="meta-list">
-          <div class="meta-item">
-            <strong>入力</strong>
-            <span>.epub 1ファイル</span>
-          </div>
-          <div class="meta-item">
-            <strong>変更箇所</strong>
-            <span>package document の metadata 内</span>
-          </div>
-          <div class="meta-item">
-            <strong>追加要素</strong>
-            <span><code class="inline">&lt;meta name="primary-writing-mode" content="horizontal-rl"/&gt;</code></span>
-          </div>
+          <div class="meta-item"><strong>端末</strong><span>Kindle Paperwhite 第12世代（他機種でも報告あり）</span></div>
+          <div class="meta-item"><strong>FW バージョン</strong><span>5.19.3.0.1 以降</span></div>
+          <div class="meta-item"><strong>対象ファイル</strong><span>Send to Kindle 経由の縦書き EPUB</span></div>
+          <div class="meta-item"><strong>購入書籍</strong><span>Kindle ストア購入本では発症しない</span></div>
+        </div>
+        <div class="panel-title" style="margin-top:var(--space-2)">このツールの変更箇所</div>
+        <div class="meta-list">
+          <div class="meta-item"><strong>変更対象</strong><span>content.opf の &lt;metadata&gt; のみ</span></div>
+          <div class="meta-item"><strong>本文 XHTML / CSS / 画像</strong><span>一切変更しない</span></div>
         </div>
       </aside>
     </section>
 
     <section class="grid" aria-label="編集パネル">
       <section class="panel stack">
+        <div class="panel-title">EPUB を選んで処理する</div>
         <div class="field">
           <label for="epubFile">EPUB ファイル</label>
           <input id="epubFile" type="file" accept=".epub,application/epub+zip" />
+          <div class="minor" id="fileInfo">未選択</div>
         </div>
-
         <div class="field">
-          <label for="modeValue">content 値</label>
+          <label for="modeValue">primary-writing-mode の値</label>
           <select id="modeValue">
-            <option value="horizontal-rl" selected>horizontal-rl</option>
+            <option value="horizontal-rl" selected>horizontal-rl（日本語縦書き・推奨）</option>
             <option value="horizontal-lr">horizontal-lr</option>
             <option value="vertical-rl">vertical-rl</option>
             <option value="vertical-lr">vertical-lr</option>
           </select>
         </div>
-
         <div class="actions">
-          <button class="btn btn-primary" id="patchButton" type="button">追加 / 更新して保存</button>
+          <button class="btn btn-secondary" id="checkButton" type="button">保存前チェック</button>
           <button class="btn btn-secondary" id="inspectButton" type="button">OPF を確認</button>
+          <button class="btn btn-primary" id="patchButton" type="button">追加 / 更新して保存</button>
         </div>
-
         <div class="status" id="statusBox" data-kind="idle" aria-live="polite">待機中です。EPUB を選んでください。</div>
+        <div class="progress-wrap" aria-label="進捗">
+          <progress id="progressBar" max="100" value="0"></progress>
+          <div class="progress-meta">
+            <span id="progressLabel">待機中</span>
+            <span id="progressPercent">0%</span>
+          </div>
+        </div>
       </section>
 
       <section class="panel stack">
+        <div class="panel-title">チェック結果 &amp; プレビュー</div>
         <div class="field">
-          <label for="preview">検出した OPF と変更プレビュー</label>
+          <label>保存前チェック</label>
+          <div class="check-list" id="checkList"></div>
+        </div>
+        <div class="field">
+          <label for="preview">OPF プレビュー（変更後）</label>
           <textarea id="preview" readonly spellcheck="false"></textarea>
         </div>
       </section>
     </section>
 
-    <p class="footer-note">注: このツールは <code class="inline">primary-writing-mode</code> の付与だけを行います。実際の表示結果は EPUB リーダー実装や CSS の <code class="inline">writing-mode</code> 指定にも依存します。</p>
+    <div class="footer-note">
+      <strong>注意：</strong>これは Kindle のレンダリングバグに対する暫定的な回避策です。ファームウェアが修正された場合は不要になる可能性があります。また、実際の表示結果は本文 XHTML/CSS の <code class="inline">writing-mode</code> 指定や Kindle のバージョンにも依存します。<br>
+      仕上がり確認には <a href="https://github.com/w3c/epubcheck/" target="_blank" rel="noopener noreferrer">EPUBCheck</a> の利用を推奨します。
+    </div>
   </main>
 
   <script>
-    (() => {
-      const toggle = document.querySelector('[data-theme-toggle]');
-      const root = document.documentElement;
-      let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      const renderToggle = () => {
-        root.setAttribute('data-theme', theme);
-        toggle.innerHTML = theme === 'dark'
-          ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>'
-          : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
-      };
-      renderToggle();
-      toggle.addEventListener('click', () => { theme = theme === 'dark' ? 'light' : 'dark'; renderToggle(); });
-    })();
+    (()=>{const toggle=document.querySelector('[data-theme-toggle]');const root=document.documentElement;let theme=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';const render=()=>{root.setAttribute('data-theme',theme);toggle.innerHTML=theme==='dark'?'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg>':'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';};render();toggle.addEventListener('click',()=>{theme=theme==='dark'?'light':'dark';render();});})();
 
-    const fileInput = document.getElementById('epubFile');
-    const modeValue = document.getElementById('modeValue');
-    const patchButton = document.getElementById('patchButton');
-    const inspectButton = document.getElementById('inspectButton');
-    const preview = document.getElementById('preview');
-    const statusBox = document.getElementById('statusBox');
+    const fileInput=document.getElementById('epubFile');const fileInfo=document.getElementById('fileInfo');const modeValue=document.getElementById('modeValue');const patchButton=document.getElementById('patchButton');const inspectButton=document.getElementById('inspectButton');const checkButton=document.getElementById('checkButton');const preview=document.getElementById('preview');const statusBox=document.getElementById('statusBox');const checkList=document.getElementById('checkList');const progressBar=document.getElementById('progressBar');const progressLabel=document.getElementById('progressLabel');const progressPercent=document.getElementById('progressPercent');
 
-    function setStatus(kind, message) {
-      statusBox.dataset.kind = kind;
-      statusBox.textContent = message;
+    function setStatus(kind,msg){statusBox.dataset.kind=kind;statusBox.textContent=msg;}
+    function setProgress(pct,label){const s=Math.max(0,Math.min(100,Number(pct)||0));progressBar.value=s;progressPercent.textContent=`${s.toFixed(0)}%`;progressLabel.textContent=label||'処理中';}
+    function resetProgress(){setProgress(0,'待機中');}
+    function parseXml(text){const doc=new DOMParser().parseFromString(text,'application/xml');if(doc.querySelector('parsererror'))throw new Error('XML の解析に失敗しました');return doc;}
+    function byLocal(node,name){return Array.from(node.getElementsByTagName('*')).find(el=>el.localName===name)||null;}
+    function allByLocal(node,name){return Array.from(node.getElementsByTagName('*')).filter(el=>el.localName===name);}
+    function fmtBytes(b){if(!Number.isFinite(b))return '(unknown)';const u=['B','KB','MB','GB'];let v=b,i=0;while(v>=1024&&i<u.length-1){v/=1024;i++;}return `${v.toFixed(v>=10||i===0?0:1)} ${u[i]}`;}
+    function renderChecks(items){checkList.innerHTML='';for(const it of items){const d=document.createElement('div');d.className='check-item';d.dataset.state=it.state;d.innerHTML=`<strong>${it.label}</strong><span>${it.detail}</span>`;checkList.appendChild(d);}}
+    async function readU8(entry){return entry.async('uint8array');}
+
+    async function openPackage(file){
+      if(!window.JSZip)throw new Error('JSZip の読み込みが完了していません');
+      const zip=await JSZip.loadAsync(file);
+      const cEntry=zip.file('META-INF/container.xml');
+      if(!cEntry)throw new Error('META-INF/container.xml が見つかりません');
+      const cText=await cEntry.async('string');
+      const cDoc=parseXml(cText);
+      const rf=byLocal(cDoc,'rootfile');
+      if(!rf)throw new Error('container.xml に rootfile がありません');
+      const opfPath=rf.getAttribute('full-path');
+      if(!opfPath)throw new Error('rootfile の full-path が取得できません');
+      const opfEntry=zip.file(opfPath);
+      if(!opfEntry)throw new Error(`OPF が見つかりません: ${opfPath}`);
+      const opfText=await opfEntry.async('string');
+      const opfDoc=parseXml(opfText);
+      const metadata=byLocal(opfDoc,'metadata');
+      if(!metadata)throw new Error('OPF に metadata セクションがありません');
+      const mimeEntry=zip.file('mimetype');
+      const mimetype=mimeEntry?(await mimeEntry.async('string')).trim():'';
+      return {zip,opfPath,opfText,opfDoc,metadata,mimetype};
     }
 
-    function parseXml(text) {
-      const doc = new DOMParser().parseFromString(text, 'application/xml');
-      const err = doc.querySelector('parsererror');
-      if (err) throw new Error('XML の解析に失敗しました');
-      return doc;
+    function upsertMode(opfDoc,metadata,value){
+      const metas=allByLocal(metadata,'meta');
+      let target=metas.find(el=>el.getAttribute('name')==='primary-writing-mode')||null;
+      const before=target?target.getAttribute('content')||'':null;
+      if(!target){target=opfDoc.createElementNS(metadata.namespaceURI||opfDoc.documentElement.namespaceURI||null,'meta');target.setAttribute('name','primary-writing-mode');metadata.appendChild(target);}
+      target.setAttribute('content',value);
+      return {action:before===null?'added':before===value?'unchanged':'updated',before,after:value};
     }
 
-    function getFirstByLocalName(node, localName) {
-      return Array.from(node.getElementsByTagName('*')).find((el) => el.localName === localName) || null;
-    }
+    function serXml(doc){const t=new XMLSerializer().serializeToString(doc);return t.startsWith('<?xml')?t:'<?xml version="1.0" encoding="UTF-8"?>\n'+t;}
 
-    function getChildrenByLocalName(node, localName) {
-      return Array.from(node.getElementsByTagName('*')).filter((el) => el.localName === localName);
-    }
-
-    async function readUint8(entry) {
-      return entry.async('uint8array');
-    }
-
-    async function openPackage(file) {
-      if (!window.JSZip) throw new Error('JSZip の読み込みが完了していません');
-      const zip = await JSZip.loadAsync(file);
-      const containerEntry = zip.file('META-INF/container.xml');
-      if (!containerEntry) throw new Error('META-INF/container.xml が見つかりません');
-
-      const containerText = await containerEntry.async('string');
-      const containerDoc = parseXml(containerText);
-      const rootfile = getFirstByLocalName(containerDoc, 'rootfile');
-      if (!rootfile) throw new Error('container.xml に rootfile がありません');
-
-      const opfPath = rootfile.getAttribute('full-path');
-      if (!opfPath) throw new Error('rootfile の full-path が取得できません');
-
-      const opfEntry = zip.file(opfPath);
-      if (!opfEntry) throw new Error(`OPF が見つかりません: ${opfPath}`);
-
-      const opfText = await opfEntry.async('string');
-      const opfDoc = parseXml(opfText);
-      const metadata = getFirstByLocalName(opfDoc, 'metadata');
-      if (!metadata) throw new Error('OPF に metadata セクションがありません');
-
-      return { zip, opfPath, opfText, opfDoc, metadata };
-    }
-
-    function upsertPrimaryWritingMode(opfDoc, metadata, value) {
-      const metas = getChildrenByLocalName(metadata, 'meta');
-      let target = metas.find((el) => el.getAttribute('name') === 'primary-writing-mode') || null;
-      const before = target ? target.getAttribute('content') || '' : null;
-
-      if (!target) {
-        target = opfDoc.createElementNS(metadata.namespaceURI || opfDoc.documentElement.namespaceURI || null, 'meta');
-        target.setAttribute('name', 'primary-writing-mode');
-        metadata.appendChild(target);
+    async function rebuild(sourceZip,opfPath,opfText){
+      const out=new JSZip();
+      const mimeEntry=sourceZip.file('mimetype');
+      if(!mimeEntry)throw new Error('mimetype が見つかりません');
+      out.file('mimetype',await mimeEntry.async('uint8array'),{compression:'STORE'});
+      for(const name of Object.keys(sourceZip.files).filter(n=>n!=='mimetype')){
+        const e=sourceZip.files[name];
+        if(e.dir){out.folder(name);continue;}
+        out.file(name,name===opfPath?opfText:await readU8(e),{compression:'DEFLATE'});
       }
-      target.setAttribute('content', value);
-
-      const action = before === null ? 'added' : (before === value ? 'unchanged' : 'updated');
-      return { action, before, after: value };
+      return out.generateAsync({type:'blob',mimeType:'application/epub+zip'},(meta)=>setProgress(meta.percent||0,meta.currentFile?`再構築: ${meta.currentFile}`:'再構築中'));
     }
 
-    function serializeXml(doc) {
-      const text = new XMLSerializer().serializeToString(doc);
-      return text.startsWith('<?xml') ? text : '<?xml version="1.0" encoding="UTF-8"?>\n' + text;
-    }
-
-    async function rebuildEpubWithStoredMimetype(sourceZip, updatedOpfPath, updatedOpfText) {
-      const out = new JSZip();
-      const mimetypeEntry = sourceZip.file('mimetype');
-      if (!mimetypeEntry) throw new Error('mimetype が見つかりません');
-      const mimetypeData = await mimetypeEntry.async('uint8array');
-      out.file('mimetype', mimetypeData, { compression: 'STORE' });
-
-      const names = Object.keys(sourceZip.files).filter((name) => name !== 'mimetype');
-      for (const name of names) {
-        const entry = sourceZip.files[name];
-        if (entry.dir) {
-          out.folder(name);
-          continue;
-        }
-        if (name === updatedOpfPath) {
-          out.file(name, updatedOpfText, { compression: 'DEFLATE' });
-        } else {
-          out.file(name, await readUint8(entry), { compression: 'DEFLATE' });
-        }
+    async function saveBlob(blob,origName){
+      const fname=origName.replace(/\.epub$/i,'')+'-patched.epub';
+      if(window.showSaveFilePicker){
+        try{
+          const h=await window.showSaveFilePicker({suggestedName:fname,types:[{description:'EPUB file',accept:{'application/epub+zip':['.epub']}}]});
+          const w=await h.createWritable();await w.write(blob);await w.close();
+          return {method:'picker',filename:fname};
+        }catch(e){if(e&&e.name==='AbortError')throw new Error('保存がキャンセルされました');}
       }
-      return out.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+      return {method:'download',filename:fname};
     }
 
-    function saveBlob(blob, originalName) {
-      const base = originalName.replace(/\.epub$/i, '');
-      const filename = `${base}-patched.epub`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    function buildPreview(opfPath,result,xmlText){
+      const lines=xmlText.split(/\r?\n/).filter(l=>/primary-writing-mode|<metadata|<package|page-progression|dc:|dcterms:/i.test(l)).slice(0,40).join('\n');
+      return [`OPF: ${opfPath}`,`action: ${result.action}`,`before: ${result.before??'(none)'}`,`after:  ${result.after}`,'',lines||xmlText.slice(0,2200)].join('\n');
     }
 
-    function buildPreview(opfPath, result, xmlText) {
-      const fragment = xmlText.split(/\r?\n/).filter((line) => /primary-writing-mode|<metadata|<package|dc:|dcterms:/i.test(line)).slice(0, 40).join('\n');
-      return [
-        `OPF: ${opfPath}`,
-        `action: ${result.action}`,
-        `before: ${result.before ?? '(none)'}`,
-        `after: ${result.after}`,
-        '',
-        fragment || xmlText.slice(0, 2200)
-      ].join('\n');
+    async function preflight(file,desiredValue){
+      const info=await openPackage(file);
+      const metas=allByLocal(info.metadata,'meta');
+      const current=metas.find(el=>el.getAttribute('name')==='primary-writing-mode');
+      const cv=current?current.getAttribute('content')||'(empty)':null;
+      const ppd=info.opfDoc.documentElement.getAttribute('page-progression-direction')||'(未設定)';
+      const items=[
+        {state:'ok',label:'OPF 検出',detail:info.opfPath},
+        {state:info.mimetype==='application/epub+zip'?'ok':'warn',label:'mimetype',detail:info.mimetype||'mimetype が見つかりません'},
+        {state:ppd==='rtl'?'ok':'warn',label:'page-progression-direction',detail:`${ppd}${ppd==='rtl'?' — 縦書き RTL として定義済み':' — 縦書き EPUB では通常 rtl のはず'}`},
+        {state:current?cv===desiredValue?'ok':'warn':'warn',label:'既存 primary-writing-mode',detail:current?`現在値: ${cv}`:'未設定（追加されます）'},
+        {state:file.size>50*1024*1024?'warn':'ok',label:'ファイルサイズ',detail:`${fmtBytes(file.size)}${file.size>50*1024*1024?'（大きめ）':''}`},
+        {state:window.showSaveFilePicker?'ok':'warn',label:'保存方式',detail:window.showSaveFilePicker?'Save File Picker（直接保存可能）':'通常ダウンロード'},
+        {state:'ok',label:'予定変更',detail:current?`${cv} → ${desiredValue}`:`(none) → ${desiredValue}`}
+      ];
+      const clDoc=info.opfDoc.cloneNode(true);
+      const clMeta=byLocal(clDoc,'metadata');
+      const result=upsertMode(clDoc,clMeta,desiredValue);
+      const patched=serXml(clDoc);
+      return {info,items,result,patched};
     }
 
-    inspectButton.addEventListener('click', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) {
-        setStatus('warn', '先に EPUB を選択してください。');
-        return;
-      }
-      try {
-        setStatus('idle', 'EPUB を解析しています…');
-        const { opfPath, opfText, opfDoc, metadata } = await openPackage(file);
-        const clonedDoc = opfDoc.cloneNode(true);
-        const clonedMetadata = getFirstByLocalName(clonedDoc, 'metadata');
-        const result = upsertPrimaryWritingMode(clonedDoc, clonedMetadata, modeValue.value);
-        const patched = serializeXml(clonedDoc);
-        preview.value = buildPreview(opfPath, result, patched || opfText);
-        setStatus('success', `確認完了: ${opfPath} に ${result.action} される予定です。`);
-      } catch (error) {
-        console.error(error);
-        setStatus('error', error.message);
-      }
+    fileInput.addEventListener('change',()=>{
+      const f=fileInput.files?.[0];
+      if(!f){fileInfo.textContent='未選択';renderChecks([]);preview.value='';resetProgress();setStatus('idle','待機中です。EPUB を選んでください。');return;}
+      fileInfo.textContent=`${f.name} / ${fmtBytes(f.size)}`;
+      renderChecks([]);preview.value='';resetProgress();
+      setStatus('idle','ファイルを読み込みました。保存前チェックを実行できます。');
     });
 
-    patchButton.addEventListener('click', async () => {
-      const file = fileInput.files?.[0];
-      if (!file) {
-        setStatus('warn', '先に EPUB を選択してください。');
-        return;
-      }
-      try {
-        patchButton.disabled = true;
-        inspectButton.disabled = true;
-        setStatus('idle', 'EPUB を編集して再構築しています…');
-
-        const { zip, opfPath, opfDoc, metadata } = await openPackage(file);
-        const result = upsertPrimaryWritingMode(opfDoc, metadata, modeValue.value);
-        const updatedOpfText = serializeXml(opfDoc);
-        preview.value = buildPreview(opfPath, result, updatedOpfText);
-
-        const blob = await rebuildEpubWithStoredMimetype(zip, opfPath, updatedOpfText);
-        saveBlob(blob, file.name);
-
-        const label = result.action === 'added' ? '追加' : result.action === 'updated' ? '更新' : '確認';
-        setStatus('success', `${label}完了: ${file.name} から修正版 EPUB を生成しました。`);
-      } catch (error) {
-        console.error(error);
-        setStatus('error', error.message);
-      } finally {
-        patchButton.disabled = false;
-        inspectButton.disabled = false;
-      }
+    checkButton.addEventListener('click',async()=>{
+      const f=fileInput.files?.[0];if(!f){setStatus('warn','先に EPUB を選択してください。');return;}
+      try{setProgress(5,'保存前チェック');const {items,result,patched,info}=await preflight(f,modeValue.value);renderChecks(items);preview.value=buildPreview(info.opfPath,result,patched);setProgress(100,'完了');setStatus('success','保存前チェックが完了しました。');}
+      catch(e){console.error(e);setStatus('error',e.message);setProgress(0,'エラー');}
     });
+
+    inspectButton.addEventListener('click',async()=>{
+      const f=fileInput.files?.[0];if(!f){setStatus('warn','先に EPUB を選択してください。');return;}
+      try{setProgress(10,'解析中');const {info,result,patched}=await preflight(f,modeValue.value);preview.value=buildPreview(info.opfPath,result,patched||info.opfText);setProgress(100,'完了');setStatus('success',`確認完了: ${result.action} される予定です。`);}
+      catch(e){console.error(e);setStatus('error',e.message);setProgress(0,'エラー');}
+    });
+
+    patchButton.addEventListener('click',async()=>{
+      const f=fileInput.files?.[0];if(!f){setStatus('warn','先に EPUB を選択してください。');return;}
+      try{
+        patchButton.disabled=inspectButton.disabled=checkButton.disabled=true;
+        setStatus('idle','保存前チェックを実行しています…');setProgress(5,'保存前チェック');
+        const {info,items,result,patched}=await preflight(f,modeValue.value);
+        renderChecks(items);preview.value=buildPreview(info.opfPath,result,patched);
+        setStatus('idle','EPUB を再構築しています…');
+        const blob=await rebuild(info.zip,info.opfPath,patched);
+        setProgress(100,'保存中');
+        const saved=await saveBlob(blob,f.name);
+        const label=result.action==='added'?'追加':result.action==='updated'?'更新':'確認';
+        setStatus('success',`${label}完了（${saved.method==='picker'?'直接保存':'ダウンロード'}）: ${saved.filename}`);
+        setProgress(100,'完了');
+      }catch(e){
+        console.error(e);setStatus(e.message==='保存がキャンセルされました'?'warn':'error',e.message);setProgress(0,e.message==='保存がキャンセルされました'?'キャンセル':'エラー');
+      }finally{patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;}
+    });
+
+    renderChecks([{state:'warn',label:'未チェック',detail:'EPUB を選択して「保存前チェック」を実行してください。'}]);
+    resetProgress();
   </script>
 </body>
 </html>
