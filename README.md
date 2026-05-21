@@ -1,9 +1,21 @@
 # Kindle 縦書き対策 EPUB Tool
 
-**Kindle の縦書き表示不具合を回避するため、EPUB の `content.opf` に `primary-writing-mode` メタデータを追加・更新するブラウザ完結ツールです。**  
-GitHub Pages で動作します。サーバーサイド処理は不要です。
+**Kindle の縦書き表示不具合を回避するため、EPUB の `content.opf` に `primary-writing-mode` メタデータを追加・更新するブラウザ完結ツールです。**
 
 🔗 **[ツールを開く](https://spacerunner-k.github.io/epub-primary-writing-mode-tool/)**
+
+---
+
+## 重要なお知らせ
+
+> **これは公式に確認されたバグ修正ではなく、症状と構造から導いた推定と回避策です。**  
+> Kindle のファームウェアが修正された場合は不要になる可能性があります。
+
+- **ファイルはサーバーに送信されません。** EPUB の読み込み・編集・保存の全処理はお使いのブラウザ内で完結します。
+- **変更されるのは OPF のみです。** 本文 XHTML・CSS・画像には一切手を加えません。
+- `showSaveFilePicker()` は HTTPS の secure context と対応ブラウザが必要です。
+- 巨大な EPUB はブラウザのメモリ消費が増えます。
+- 仕上がり確認には [EPUBCheck](https://github.com/w3c/epubcheck/) の利用を推奨します。
 
 ---
 
@@ -28,8 +40,6 @@ GitHub Pages で動作します。サーバーサイド処理は不要です。
 ```
 
 これは EPUB リーダーや Kindle のような読書プラットファームに対し、「このコンテンツの主書字方向は `horizontal-rl`（縦書き・右から左方向）である」と明示する値です。`page-progression-direction` が論理的なページ送り方向を示すのに対し、`primary-writing-mode` はより具体的な**描画・組版上の書字方向**を指定するため、レンダリングエンジンが正しいレイアウト規則を選択しやすくなります。
-
-> **注意**: これは公式に確認されたバグ修正ではなく、症状と構造から導いた推定と回避策です。Kindle のファームウェアが修正された場合は不要になる可能性があります。
 
 ---
 
@@ -96,7 +106,7 @@ example.epub  →  example-patched.epub
 ### manifest / spine 検証
 
 - **manifest 検証**: 各アイテムの `properties` 属性の有無・実ファイルの存在確認をテーブル表示
-- **spine 展開ビュー**: `page-progression-direction` の値とアイテム一覧を視覚化　2筆確認できます
+- **spine 展開ビュー**: `page-progression-direction` の値とアイテム一覧を視覚化
 
 ---
 
@@ -125,6 +135,8 @@ example.epub  →  example-patched.epub
                                → XMLSerializer で再シリアライズ
  → 再 ZIP（mimetype は STORE/先頭を維持）→ 保存
 ```
+
+**全処理はブラウザ内で完結するため、EPUB の内容が外部に送信されることはありません。**
 
 - EPUB は ZIP 形式なので [JSZip](https://stuk.github.io/jszip/) で展開・再構築
 - `container.xml` から `full-path` を読み OPF を特定
@@ -159,20 +171,10 @@ example.epub  →  example-patched.epub
 
 ---
 
-## 注意事項
-
-- これは **Kindle の縦書き表示バグに対する回避策**であり、恒久的な修正ではありません
-- 変更されるのは OPF のみです。本文 XHTML・CSS・画像には一切手を加えません
-- `showSaveFilePicker()` は HTTPS の secure context と対応ブラウザが必要です
-- 巨大な EPUB はブラウザのメモリ消費が増えます
-- 仕上がり確認には [EPUBCheck](https://github.com/w3c/epubcheck/) の利用を推奨します
-
----
-
 ## 技術スタック
 
 - 純粋な HTML + JavaScript（依存ライブラリ: JSZip CDN のみ）
-- サーバー不要・GitHub Pages 対応
+- **サーバー不要・ブラウザ内完結**・GitHub Pages 対応
 - ライト / ダークモード対応
 
 ---
