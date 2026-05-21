@@ -939,4 +939,51 @@
           setBatchState(batchItems[i],'ok','完了');
           ok++;
         }catch(e){
-         
+          console.error(e);
+          setBatchState(batchItems[i],'error',e.message.slice(0,40));
+          fail++;
+        }
+      }
+      setProgress(100,'バッチ完了');
+      const msg=`バッチ完了 — 成功: ${ok}件 / スキップ: ${skip}件 / エラー: ${fail}件`;
+      setStatus(statusBox,fail>0?'warn':'success',msg);
+      patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;
+    }
+  });
+
+  // ── confirm dialog ────────────────────────────────────────────────
+  let _confirmCb=null;
+  function openConfirmDialog(result,opfPath,onConfirm){
+    _confirmCb=onConfirm;
+    dialogDiffArea.innerHTML=`
+      <div class="dialog-diff-row">
+        <strong style="min-width:80px">OPF</strong>
+        <span style="color:var(--color-text-muted);font-size:.9em;word-break:break-all">${opfPath}</span>
+      </div>
+      <div class="dialog-diff-row">
+        <strong style="min-width:80px">変更前</strong>
+        <span class="badge-before">${result.before??'(なし)'}</span>
+        <span class="arrow">→</span>
+        <span class="badge-after">${result.after}</span>
+        <strong style="margin-left:.3rem;font-size:.8rem">${result.action}</strong>
+      </div>`;
+    confirmDialog.classList.remove('hidden');
+    dialogConfirm.focus();
+  }
+  dialogCancel.addEventListener('click',()=>{
+    confirmDialog.classList.add('hidden');_confirmCb=null;
+  });
+  dialogConfirm.addEventListener('click',()=>{
+    confirmDialog.classList.add('hidden');
+    if(_confirmCb){_confirmCb();_confirmCb=null;}
+  });
+  confirmDialog.addEventListener('click',e=>{
+    if(e.target===confirmDialog){confirmDialog.classList.add('hidden');_confirmCb=null;}
+  });
+
+  // ── advanced toggle ───────────────────────────────────────────────
+  advToggleBtn.addEventListener('click',()=>{
+    advMode=!advMode;
+    advancedSection.classList.toggle('visible',advMode);
+    advToggleBtn.setAttribute('aria-expanded',String(advMode));
+    advToggleLabel.textContent=advMode?'上級者モードを閉じる':
