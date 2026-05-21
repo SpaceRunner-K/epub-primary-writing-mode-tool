@@ -128,6 +128,24 @@
       color:var(--color-text-muted)}
     .mechanism ol{padding-left:var(--space-5);display:grid;gap:var(--space-2)}
     .mechanism li{font-size:var(--text-sm);max-width:none}
+    /* ── how-to steps ── */
+    .howto{margin-top:var(--space-5);padding:var(--space-4) var(--space-5);
+      background:var(--color-primary-highlight);border-radius:var(--radius-lg);
+      border:1px solid color-mix(in srgb,var(--color-primary) 20%,transparent)}
+    .howto h2{font-size:var(--text-sm);font-weight:700;margin-bottom:var(--space-3);
+      color:var(--color-primary)}
+    .howto ol{padding-left:var(--space-5);display:grid;gap:var(--space-2)}
+    .howto li{font-size:var(--text-sm);max-width:none}
+    /* ── privacy banner ── */
+    .privacy-banner{display:flex;align-items:flex-start;gap:var(--space-3);
+      padding:var(--space-3) var(--space-4);
+      background:var(--color-success-highlight);
+      border:1px solid color-mix(in srgb,var(--color-success) 30%,transparent);
+      border-radius:var(--radius-lg)}
+    .privacy-banner svg{flex-shrink:0;width:18px;height:18px;margin-top:2px;
+      color:var(--color-success)}
+    .privacy-banner p{font-size:var(--text-xs);color:var(--color-text);line-height:1.5}
+    .privacy-banner strong{color:var(--color-success)}
     /* ── grid ── */
     .grid{display:grid;gap:var(--space-6)}
     @media(min-width:860px){.grid{grid-template-columns:1.1fr 0.9fr}}
@@ -348,6 +366,15 @@
           <code class="inline">content.opf</code> に <code class="inline">primary-writing-mode</code>
           を明示することで回避できる場合があります。
         </p>
+        <div class="howto">
+          <h2>簡単な使い方</h2>
+          <ol>
+            <li>修正したい <code class="inline">.epub</code> ファイルを選択する（複数可）。</li>
+            <li>「<strong>追加 / 更新して保存</strong>」ボタンをクリックする。</li>
+            <li>確認ダイアログで変更内容を確認し「<strong>保存する</strong>」をクリックする。</li>
+            <li>出力された <code class="inline">*-patched.epub</code> を Send to Kindle で送信する。</li>
+          </ol>
+        </div>
         <div class="mechanism">
           <h2>推定されるバグの原因と回避の仕組み</h2>
           <ol>
@@ -361,6 +388,18 @@
         </div>
       </article>
       <aside class="panel sidebar-info" aria-label="発症条件と対応">
+        <!-- ── プライバシーバナー ── -->
+        <div class="privacy-banner" role="note" aria-label="プライバシーに関する情報">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          <p>
+            <strong>ファイルはサーバーへ送信されません。</strong><br>
+            すべての処理はブラウザ内（端末上）で完結します。
+            選択した EPUB がインターネットに送出されることはありません。
+          </p>
+        </div>
         <div class="panel-title">発症条件</div>
         <div class="meta-list">
           <div class="meta-item"><strong>端末</strong>
@@ -900,277 +939,4 @@
           setBatchState(batchItems[i],'ok','完了');
           ok++;
         }catch(e){
-          console.error(e);
-          setBatchState(batchItems[i],'error',e.message.slice(0,40));
-          fail++;
-        }
-      }
-      setProgress(100,'バッチ完了');
-      const msg=`バッチ完了 — 成功: ${ok}件 / スキップ: ${skip}件 / エラー: ${fail}件`;
-      setStatus(statusBox,fail>0?'warn':'success',msg);
-      patchButton.disabled=inspectButton.disabled=checkButton.disabled=false;
-    }
-  });
-
-  // ── confirm dialog ────────────────────────────────────────────────
-  let _confirmCb=null;
-  function openConfirmDialog(result,opfPath,onConfirm){
-    _confirmCb=onConfirm;
-    dialogDiffArea.innerHTML=`
-      <div class="dialog-diff-row">
-        <strong style="min-width:80px">OPF</strong>
-        <span style="color:var(--color-text-muted);font-size:.9em;word-break:break-all">${opfPath}</span>
-      </div>
-      <div class="dialog-diff-row">
-        <strong style="min-width:80px">変更前</strong>
-        <span class="badge-before">${result.before??'(なし)'}</span>
-        <span class="arrow">→</span>
-        <span class="badge-after">${result.after}</span>
-        <strong style="margin-left:.3rem;font-size:.8rem">${result.action}</strong>
-      </div>`;
-    confirmDialog.classList.remove('hidden');
-    dialogConfirm.focus();
-  }
-  dialogCancel.addEventListener('click',()=>{
-    confirmDialog.classList.add('hidden');_confirmCb=null;
-  });
-  dialogConfirm.addEventListener('click',()=>{
-    confirmDialog.classList.add('hidden');
-    if(_confirmCb){_confirmCb();_confirmCb=null;}
-  });
-  confirmDialog.addEventListener('click',e=>{
-    if(e.target===confirmDialog){confirmDialog.classList.add('hidden');_confirmCb=null;}
-  });
-
-  // ── advanced toggle ───────────────────────────────────────────────
-  advToggleBtn.addEventListener('click',()=>{
-    advMode=!advMode;
-    advancedSection.classList.toggle('visible',advMode);
-    advToggleBtn.setAttribute('aria-expanded',String(advMode));
-    advToggleLabel.textContent=advMode?'上級者モードを閉じる':'上級者モード';
-    if(advMode){
-      advancedSection.scrollIntoView({behavior:'smooth',block:'start'});
-      const files=fileInput.files;
-      if(files&&files.length===1)loadAdvData(files[0]);
-    }
-  });
-
-  // ── advanced: load data ───────────────────────────────────────────
-  async function loadAdvData(file){
-    try{
-      setStatus(advStatus,'idle','解析中…');
-      const info=await openPackage(file);
-      currentZip=info.zip;
-      currentRootfiles=info.rootfiles;
-      // default selected
-      if(!selectedRootfilePath||!currentRootfiles.find(r=>r.path===selectedRootfilePath)){
-        selectedRootfilePath=currentRootfiles[0].path;
-      }
-      renderRootfileList();
-      await switchRootfile(selectedRootfilePath);
-      setStatus(advStatus,'success','読み込み完了');
-    }catch(e){
-      console.error(e);setStatus(advStatus,'error',e.message);
-    }
-  }
-
-  function renderRootfileList(){
-    rootfileList.innerHTML='';
-    for(const rf of currentRootfiles){
-      const label=document.createElement('label');
-      label.className='rootfile-item'+(rf.path===selectedRootfilePath?' selected':'');
-      const radio=document.createElement('input');
-      radio.type='radio';radio.name='rootfile';radio.value=rf.path;
-      radio.checked=rf.path===selectedRootfilePath;
-      radio.addEventListener('change',async()=>{
-        selectedRootfilePath=rf.path;
-        renderRootfileList();
-        await switchRootfile(rf.path);
-      });
-      label.appendChild(radio);
-      const info=document.createElement('span');
-      info.innerHTML=`<strong style="word-break:break-all">${rf.path}</strong>
-        <span style="color:var(--color-text-faint);font-size:.78rem">${rf.mediaType}</span>`;
-      label.appendChild(info);
-      rootfileList.appendChild(label);
-    }
-  }
-
-  async function switchRootfile(opfPath){
-    if(!currentZip)return;
-    try{
-      const {opfText,opfDoc}=await loadOpf(currentZip,opfPath);
-      originalOpfText=opfText;
-      advEditor.value=opfText;
-      updateEditorStats(opfText);
-      await renderManifest(opfDoc,opfPath);
-      renderSpine(opfDoc);
-    }catch(e){
-      console.error(e);setStatus(advStatus,'error',e.message);
-    }
-  }
-
-  // ── editor stats ─────────────────────────────────────────────────
-  function updateEditorStats(text){
-    const lines=text.split('\n').length;
-    const bytes=new TextEncoder().encode(text).length;
-    const vld=validateXml(text);
-    advEditorStats.innerHTML=`
-      <span class="chip">${lines} 行</span>
-      <span class="chip">${fmtBytes(bytes)}</span>
-      <span class="chip" style="background:${vld.ok?'var(--color-success-highlight)':'var(--color-error-highlight)'};color:${vld.ok?'var(--color-success)':'var(--color-error)'}">
-        ${vld.ok?'XML OK':'XML エラー'}
-      </span>`;
-  }
-  advEditor.addEventListener('input',()=>updateEditorStats(advEditor.value));
-
-  // ── manifest table ────────────────────────────────────────────────
-  async function renderManifest(opfDoc,opfPath){
-    const items=allByLocal(opfDoc,'item');
-    if(!items.length){
-      manifestWrap.innerHTML='<div class="minor">manifest item が見つかりません</div>';return;
-    }
-    const opfDir=opfPath.includes('/')?opfPath.replace(/\/[^/]+$/,'')+'/':'';
-    let rows='';
-    for(const item of items){
-      const id=item.getAttribute('id')||'';
-      const href=item.getAttribute('href')||'';
-      const mt=item.getAttribute('media-type')||'';
-      const props=item.getAttribute('properties')||'';
-      const fullPath=opfDir+href;
-      const exists=currentZip&&currentZip.file(fullPath)!==null;
-      rows+=`<tr>
-        <td>${id}</td>
-        <td style="word-break:break-all">${href}</td>
-        <td>${mt}</td>
-        <td class="${props?'prop-ok':'prop-missing'}">${props||'—'}</td>
-        <td style="font-size:.78rem;color:${exists?'var(--color-success)':'var(--color-warning)'}">
-          ${exists?'✓ 存在':'⚠ 見つからない'}
-        </td>
-      </tr>`;
-    }
-    manifestWrap.innerHTML=`
-      <div class="manifest-scroll">
-        <table>
-          <thead><tr>
-            <th>id</th><th>href</th><th>media-type</th>
-            <th>properties</th><th>ファイル</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div class="minor" style="margin-top:var(--space-2)">${items.length} アイテム</div>`;
-  }
-
-  // ── spine viz ─────────────────────────────────────────────────────
-  function renderSpine(opfDoc){
-    const spineEl=byLocal(opfDoc,'spine');
-    // ── 修正: ppd は <spine> 要素の属性から取得 ──
-    const ppd=spineEl?spineEl.getAttribute('page-progression-direction'):null;
-    const ppdDisplay=ppd??'(未設定)';
-    if(!spineEl){spineRow.innerHTML='<span class="minor">spine が見つかりません</span>';return;}
-    const itemrefs=allByLocal(spineEl,'itemref');
-    if(!itemrefs.length){spineRow.innerHTML='<span class="minor">spine アイテムなし</span>';return;}
-    spineRow.innerHTML=itemrefs.map(r=>{
-      const idref=r.getAttribute('idref')||'';
-      const linear=r.getAttribute('linear');
-      const cls='spine-item'+(ppd==='rtl'?' rtl-spine':'');
-      return `<span class="${cls}" title="linear: ${linear??'(未設定)'}">${idref}</span>`;
-    }).join('');
-    spineNote.textContent=`page-progression-direction="${ppdDisplay}" / ${itemrefs.length} アイテム`;
-  }
-
-  // ── adv: reload ───────────────────────────────────────────────────
-  advReloadBtn.addEventListener('click',()=>{
-    if(!originalOpfText){setStatus(advStatus,'warn','先に EPUB を選択してください。');return;}
-    advEditor.value=originalOpfText;
-    updateEditorStats(originalOpfText);
-    setStatus(advStatus,'idle','元の OPF に戻しました');
-  });
-
-  // ── adv: auto-insert mode ─────────────────────────────────────────
-  advApplyModeBtn.addEventListener('click',()=>{
-    const text=advEditor.value;
-    if(!text){setStatus(advStatus,'warn','先に EPUB を選択してください。');return;}
-    const vld=validateXml(text);
-    if(!vld.ok){setStatus(advStatus,'error','XML エラーがあります: '+vld.error);return;}
-    try{
-      const doc=parseXml(text);
-      const meta=byLocal(doc,'metadata');
-      if(!meta)throw new Error('metadata 要素が見つかりません');
-      const result=upsertMode(doc,meta,modeValue.value);
-      const newText=serXml(doc);
-      advEditor.value=newText;
-      updateEditorStats(newText);
-      setStatus(advStatus,'success',
-        `writing-mode を${result.action==='added'?'追加':result.action==='updated'?'更新':'確認'}しました: ${result.after}`);
-    }catch(e){setStatus(advStatus,'error',e.message);}
-  });
-
-  // ── adv: save ─────────────────────────────────────────────────────
-  advSaveBtn.addEventListener('click',async()=>{
-    const files=fileInput.files;
-    if(!files||!files.length||!currentZip||!selectedRootfilePath){
-      setStatus(advStatus,'warn','先に EPUB を選択してください。');return;
-    }
-    const f=files[0];
-    const editedText=advEditor.value;
-    const vld=validateXml(editedText);
-    if(!vld.ok){
-      setStatus(advStatus,'error','保存できません。XML エラー: '+vld.error);return;
-    }
-    // diff summary
-    const origDoc=parseXml(originalOpfText||'<x/>');
-    const newDoc=parseXml(editedText);
-    const origMeta=byLocal(origDoc,'metadata');
-    const newMeta=byLocal(newDoc,'metadata');
-    const origMode=origMeta
-      ?allByLocal(origMeta,'meta').find(el=>el.getAttribute('name')==='primary-writing-mode')
-      :null;
-    const newMode=newMeta
-      ?allByLocal(newMeta,'meta').find(el=>el.getAttribute('name')==='primary-writing-mode')
-      :null;
-    const diffResult={
-      action:!origMode&&newMode?'added':origMode&&!newMode?'removed':'updated',
-      before:origMode?origMode.getAttribute('content')||'(empty)':null,
-      after:newMode?newMode.getAttribute('content')||'(empty)':null,
-    };
-    openConfirmDialog(
-      {action:diffResult.action,before:diffResult.before,after:diffResult.after??'(削除)'},
-      selectedRootfilePath,
-      async()=>{
-        try{
-          advSaveBtn.disabled=true;
-          setStatus(advStatus,'idle','EPUB を再構築しています…');
-          const patches=new Map([[selectedRootfilePath,editedText]]);
-          const blob=await rebuild(currentZip,patches);
-          setProgress(100,'保存中');
-          const saved=await saveBlob(blob,f.name);
-          setStatus(advStatus,'success',
-            `保存完了（${saved.method==='picker'?'直接保存':'ダウンロード'}）: ${saved.filename}`);
-          setProgress(100,'完了');
-        }catch(e){
-          console.error(e);
-          setStatus(advStatus,e.message==='保存がキャンセルされました'?'warn':'error',e.message);
-        }finally{advSaveBtn.disabled=false;}
-      }
-    );
-  });
-
-  // ── reset adv panel ───────────────────────────────────────────────
-  function resetAdvPanel(){
-    rootfileList.innerHTML='<div class="minor">EPUB を選択すると rootfile 一覧が表示されます</div>';
-    advEditor.value='';advEditorStats.innerHTML='';
-    manifestWrap.innerHTML='<div class="minor">EPUB を選択すると manifest が表示されます</div>';
-    spineRow.innerHTML='<span class="minor">EPUB を選択すると spine が表示されます</span>';
-    spineNote.textContent='';
-    setStatus(advStatus,'idle','待機中');
-  }
-
-  // ── initial state ─────────────────────────────────────────────────
-  renderChecks([{state:'warn',label:'未チェック',
-    detail:'EPUB を選択して「保存前チェック」を実行してください。'}]);
-  resetProgress();
-  </script>
-</body>
-</html>
+         
